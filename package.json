@@ -1,0 +1,10 @@
+{
+  "name": "bawarchi-direct",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Direct ordering web app and kitchen display for a Hyderabad biryani chain (take-home build)",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}
