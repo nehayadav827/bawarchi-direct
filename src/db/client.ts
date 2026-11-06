@@ -5,6 +5,8 @@ import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
@@ -17,6 +19,7 @@ const SEQ = sql`CREATE SEQUENCE IF NOT EXISTS order_ref_seq START 778200`;
 
 /** In-memory (or file-backed) Postgres via PGlite: zero setup for tests and local runs. */
 export async function createPgliteDb(dataDir?: string): Promise<DbHandle> {
+  if (dataDir) mkdirSync(dirname(dataDir), { recursive: true });
   const client = new PGlite(dataDir);
   const db = drizzlePglite(client, { schema });
   await migratePglite(db, { migrationsFolder: MIGRATIONS });
@@ -32,10 +35,22 @@ export async function createPgDb(url: string): Promise<DbHandle> {
   return { db: db as unknown as Db, close: () => pool.end() };
 }
 
-let handle: Promise<DbHandle> | undefined;
+const g = globalThis as unknown as { __bdDb?: Promise<DbHandle> };
 
-/** App singleton: DATABASE_URL -> Postgres, otherwise local PGlite in .data/ (dev only). */
+/**
+ * App singleton (kept on globalThis so dev hot-reload does not open a second database).
+ * DATABASE_URL -> Postgres, otherwise local PGlite in .data/ (dev and demo only).
+ * Demo data is seeded outside production, or when SEED_DEMO=true. The seed is idempotent.
+ */
 export function getDb(): Promise<Db> {
-  handle ??= (process.env.DATABASE_URL ? createPgDb(process.env.DATABASE_URL) : createPgliteDb(".data/pglite"));
-  return handle.then((h) => h.db);
+  g.__bdDb ??= (async () => {
+    const h = process.env.DATABASE_URL ? await createPgDb(process.env.DATABASE_URL) : await createPgliteDb(".data/pglite");
+    if (process.env.NODE_ENV !== "production" || process.env.SEED_DEMO === "true") {
+      const { seedDb } = await import("./seed");
+      await seedDb(h.db);
+    }
+    return h;
+  })();
+  g.__bdDb.catch(() => { g.__bdDb = undefined; }); // do not cache a failed start-up; the next request retries
+  return g.__bdDb.then((h) => h.db);
 }
