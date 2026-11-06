@@ -8,7 +8,36 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "jsx": "react-jsx",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "isolatedModules": true,
+    "allowJs": false,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "incremental": true,
+    "resolveJsonModule": true
   },
-  "include": ["src", "tests"]
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "tests",
+    "scripts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
