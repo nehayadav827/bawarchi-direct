@@ -29,13 +29,10 @@ export const createOrderSchema = z.object({
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
-/** Never trust client prices: everything is recomputed from the database. */
-export async function createOrder(db: Db, user: SessionUser, raw: unknown, now = new Date()) {
-  if (user.role !== "customer") throw new HttpError(403, "FORBIDDEN", "Only customers place orders");
-  const parsed = createOrderSchema.safeParse(raw);
-  if (!parsed.success) throw new HttpError(422, "INVALID_INPUT", parsed.error.issues[0]?.message ?? "Invalid order");
-  const input = parsed.data;
+type PriceInput = Omit<CreateOrderInput, "payment">;
 
+/** Prices a cart from the database: availability, portions, add-ons, coupon and totals. Shared by quote and checkout. */
+async function priceCart(db: Db, input: PriceInput, now: Date) {
   const { outlet, items } = await getMenuForOutlet(db, input.outletId, now);
   if (input.location && haversineKm(input.location, outlet) > outlet.radiusKm) {
     throw new HttpError(422, "OUT_OF_RANGE", "This outlet does not deliver to your location");
@@ -74,6 +71,26 @@ export async function createOrder(db: Db, user: SessionUser, raw: unknown, now =
     const r = applyCoupon(totals.subtotalPaise, coupon);
     if (!r.ok) throw new HttpError(422, "COUPON_MIN_ORDER", "Order is below the coupon's minimum");
   }
+  return { outlet, priced, coupon, totals };
+}
+
+/** Preview totals (coupon applied) before paying. Creates nothing. */
+export async function quoteOrder(db: Db, user: SessionUser, raw: unknown, now = new Date()) {
+  if (user.role !== "customer") throw new HttpError(403, "FORBIDDEN", "Only customers place orders");
+  const parsed = createOrderSchema.omit({ payment: true }).safeParse(raw);
+  if (!parsed.success) throw new HttpError(422, "INVALID_INPUT", parsed.error.issues[0]?.message ?? "Invalid order");
+  const { totals } = await priceCart(db, parsed.data, now);
+  return totals;
+}
+
+/** Never trust client prices: everything is recomputed from the database. */
+export async function createOrder(db: Db, user: SessionUser, raw: unknown, now = new Date()) {
+  if (user.role !== "customer") throw new HttpError(403, "FORBIDDEN", "Only customers place orders");
+  const parsed = createOrderSchema.safeParse(raw);
+  if (!parsed.success) throw new HttpError(422, "INVALID_INPUT", parsed.error.issues[0]?.message ?? "Invalid order");
+  const input = parsed.data;
+
+  const { outlet, priced, coupon, totals } = await priceCart(db, input, now);
 
   const pay = mockPay(input.payment, totals.totalPaise);
   if (!pay.ok) throw new HttpError(402, "PAYMENT_FAILED", pay.reason === "INVALID_CARD" ? "Card number looks wrong" : "Payment was declined");

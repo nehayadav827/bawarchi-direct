@@ -126,3 +126,13 @@ describe("late-order alerts", () => {
     expect((await listEventsSince(h.db, "kukatpally", 0)).filter((e) => e.type === "LATE_ALERT").length).toBe(afterFirst);
   });
 });
+
+describe("quoteOrder", () => {
+  it("previews totals with a coupon and creates no order", async () => {
+    const { quoteOrder } = await import("@/server/orders");
+    const before = (await h.db.select().from(orders)).length;
+    const t = await quoteOrder(h.db, customer, { outletId: "banjara-hills", couponCode: "direct10", lines: [{ itemId: "mutton-dum-biryani", qty: 2, portion: "Regular" }] }, tue2pm);
+    expect(t).toMatchObject({ subtotalPaise: 89800, discountPaise: 8980, totalPaise: 80820 });
+    expect((await h.db.select().from(orders)).length).toBe(before);
+  });
+});
