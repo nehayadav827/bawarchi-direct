@@ -16,7 +16,7 @@ Other outlets follow the same pattern: `kitchen.<outlet>@demo.test` and `manager
 
 Test payments: card `4111 1111 1111 1111`, UPI `demo@okbank`. Use `fail@test` (UPI) or `4000 0000 0000 0002` (card) to see a decline. Nothing is charged.
 
-Suggested 2-minute walkthrough: sign in as customer, order from Kondapur, keep the tracking page open. In a second window sign in as `kitchen.kondapur@demo.test` and move the order through the stages. The customer page updates. The seeded Kukatpally order is already late; sign in as `manager.kukatpally@demo.test` to see the alert banner and change its time.
+Suggested 2-minute walkthrough: sign in as customer, order from Kondapur, keep the tracking page open. In a second window sign in as `kitchen.kondapur@demo.test` and move the order through the stages. The customer page updates. The seeded Kukatpally order starts 4 minutes late (the manager alert appears once it is 10 minutes late); sign in as `manager.kukatpally@demo.test` to see the alert banner and change its time.
 
 ## Run locally
 
@@ -59,7 +59,7 @@ The live kitchen feed uses Server-Sent Events (a long-lived HTTP response). Use 
 | Name | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | Yes in production | Postgres connection string. If unset, the app uses the embedded database in `.data/` (local only) |
-| `AUTH_SECRET` | Yes in production | Long random string that signs session cookies. The app refuses to start in production without it |
+| `AUTH_SECRET` | Yes in production | Long random string that signs session cookies. In production, sign-in fails and `/api/health` reports unhealthy if it is missing |
 | `SEED_DEMO` | For the reviewer demo | Set to `true` to seed demo data and accounts. Leave unset for a real launch |
 | `PORT` | Set by most hosts | HTTP port, default 3000 |
 
