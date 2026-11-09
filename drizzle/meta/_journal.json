@@ -8,6 +8,13 @@
       "when": 1793897935018,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794201017178,
+      "tag": "0001_loyalty_party_notifications",
+      "breakpoints": true
     }
   ]
 }

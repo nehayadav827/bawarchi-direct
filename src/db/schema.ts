@@ -73,6 +73,10 @@ export const orders = pgTable("orders", {
   status: text("status", { enum: ["PLACED", "PREPARING", "READY", "HANDED_OFF", "CANCELLED"] }).notNull(),
   subtotalPaise: integer("subtotal_paise").notNull(),
   discountPaise: integer("discount_paise").notNull().default(0),
+  loyaltyPaise: integer("loyalty_paise").notNull().default(0),
+  pointsRedeemed: integer("points_redeemed").notNull().default(0),
+  pointsEarned: integer("points_earned").notNull().default(0),
+  readyAt: timestamp("ready_at", { withTimezone: true }), // when the kitchen marked it ready: actual prep time
   totalPaise: integer("total_paise").notNull(),
   gstPaise: integer("gst_paise").notNull(),
   couponCode: text("coupon_code"),
@@ -107,5 +111,41 @@ export const orderEvents = pgTable("order_events", {
   payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("order_events_outlet_idx").on(t.outletId, t.id)]);
+
+/** Points ledger. Balance = sum of points. Earn and return are positive; redeem and reversal are negative. */
+export const loyaltyLedger = pgTable("loyalty_ledger", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: text("user_id").notNull(),
+  orderId: text("order_id"),
+  kind: text("kind", { enum: ["EARN", "REDEEM", "REVERSAL", "RETURN"] }).notNull(),
+  points: integer("points").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("loyalty_user_idx").on(t.userId)]);
+
+export const partyOrders = pgTable("party_orders", {
+  id: text("id").primaryKey(), // PTY-<n>
+  customerId: text("customer_id").notNull(),
+  outletId: text("outlet_id").notNull(),
+  eventAt: timestamp("event_at", { withTimezone: true }).notNull(),
+  guests: integer("guests").notNull(),
+  lines: jsonb("lines").$type<{ itemId: string; name: string; qty: number; unitPaise: number }[]>().notNull().default([]),
+  notes: text("notes"),
+  estimatePaise: integer("estimate_paise").notNull(), // indicative, from menu prices
+  status: text("status", { enum: ["REQUESTED", "CONFIRMED", "DECLINED"] }).notNull(),
+  quotedPaise: integer("quoted_paise"), // set by the catering manager on confirmation
+  managerNote: text("manager_note"),
+  decidedBy: text("decided_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("party_outlet_idx").on(t.outletId, t.status)]);
+
+/** Simulated WhatsApp/SMS log (assumption A5): nothing leaves the system. */
+export const notifications = pgTable("notifications", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: text("user_id").notNull(),
+  orderId: text("order_id"),
+  channel: text("channel", { enum: ["WHATSAPP", "SMS"] }).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("notif_order_idx").on(t.orderId)]);
 
 export type Role = "customer" | "kitchen" | "manager" | "admin";
