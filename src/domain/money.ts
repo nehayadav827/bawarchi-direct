@@ -33,14 +33,17 @@ export function applyCoupon(subtotalPaise: number, coupon: Coupon | null): Coupo
   return { ok: true, discountPaise: Math.min(d, subtotalPaise) }; // never below zero
 }
 
-export interface Totals { subtotalPaise: number; discountPaise: number; totalPaise: number; gstIncludedPaise: number }
+export interface Totals { subtotalPaise: number; discountPaise: number; loyaltyPaise: number; totalPaise: number; gstIncludedPaise: number }
 
-export function computeTotals(lines: CartLine[], coupon: Coupon | null): Totals {
+/** loyaltyPaise is taken off after the coupon and can never take the total below zero. */
+export function computeTotals(lines: CartLine[], coupon: Coupon | null, loyaltyPaise = 0): Totals {
   const sub = subtotal(lines);
   const res = applyCoupon(sub, coupon);
   const discount = res.ok ? res.discountPaise : 0;
-  const total = sub - discount;
-  return { subtotalPaise: sub, discountPaise: discount, totalPaise: total, gstIncludedPaise: gstIncluded(total) };
+  const afterCoupon = sub - discount;
+  const loyalty = Math.min(Math.max(0, loyaltyPaise), afterCoupon);
+  const total = afterCoupon - loyalty;
+  return { subtotalPaise: sub, discountPaise: discount, loyaltyPaise: loyalty, totalPaise: total, gstIncludedPaise: gstIncluded(total) };
 }
 
 export const formatINR = (paise: number) =>
