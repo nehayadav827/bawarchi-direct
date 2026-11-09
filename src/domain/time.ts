@@ -14,3 +14,6 @@ export function inWindow(from: string | null, to: string | null, hhmm: string): 
   if (!from || !to) return true;
   return from <= to ? hhmm >= from && hhmm < to : hhmm >= from || hhmm < to; // supports windows past midnight
 }
+
+/** "8:59 pm" in IST, for customer messages. */
+export const istClock = (d: Date) => d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true });

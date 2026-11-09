@@ -13,8 +13,8 @@ describe("db migrate + seed (PGlite)", () => {
       (await db.select({ n: count() }).from(t))[0]!.n;
     expect(await n(outlets)).toBe(4);
     expect(await n(menuItems)).toBe(12);
-    expect(await n(orders)).toBe(3);
-    expect(await n(users)).toBe(2 + 8);
+    expect(await n(orders)).toBe(3 + 48);
+    expect(await n(users)).toBe(2 + 5 + 8);
     await close();
   }, 30000);
 });
