@@ -20,7 +20,7 @@ Set `DATABASE_URL` to use a hosted Postgres instead of the embedded one.
 
 ## Layout
 
-- `src/domain`: pure logic (GST pricing, order state machine, prep-time estimate, delivery radius). No I/O.
+- `src/domain`: pure logic (GST pricing, order state machine, prep-time estimate, delivery radius, loyalty and party rules). No I/O.
 - `src/server`: services (checkout, kitchen actions, menu, auth) that talk to the database.
 - `src/db`: Drizzle schema, migration, seed. `drizzle/` holds the SQL migration.
 - `src/app`: Next.js screens and API routes. The live kitchen feed is `api/kitchen/[outletId]/stream` (Server-Sent Events).
