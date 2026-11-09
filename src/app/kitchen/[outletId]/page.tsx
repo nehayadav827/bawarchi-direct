@@ -64,6 +64,7 @@ export default function Kitchen({ params }: { params: Promise<{ outletId: string
         <span>{data?.outlet.name ?? "Kitchen"}</span>
         <span className="live"><span className={`dot ${live ? "" : "off"}`} />{live ? "Live" : "Reconnecting (auto-refresh on)"}</span>
         <span className="spacer" />
+        {canOverride && <Link className="link" href={`/kitchen/${outletId}/party`} style={{ color: "#fff", fontSize: "1rem" }}>Party orders</Link>}
         <Link className="link" href={`/kitchen/${outletId}/stock`} style={{ color: "#fff", fontSize: "1rem" }}>Out of stock</Link>
       </div>
       {alerts.map((o) => <div key={o.id} className="kbanner" role="alert">ALERT: {o.id} is {-minsLeft(o, now)} min past its promise{canOverride ? "" : ". Tell the manager"}</div>)}
