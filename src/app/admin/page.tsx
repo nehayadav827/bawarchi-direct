@@ -49,7 +49,7 @@ export default function Admin() {
   useEffect(() => { void load(); }, [load]);
   return (
     <main className="wrap stack" style={{ maxWidth: 960 }}>
-      <h1>Central menu</h1>
+      <div className="row between"><h1>Central menu</h1><Link className="btn ghost sm" href="/dashboard">Outlet dashboard</Link></div>
       <p className="muted small">One menu for every outlet. Prices in ₹, GST-inclusive. City price overrides the base price for that city. Leave the time window empty for all-day items.</p>
       {error && <div className="notice" role="alert">{error.message} {error.status !== 403 && <Link href="/login?next=/admin">Sign in as admin</Link>}</div>}
       {!items && !error && <div className="skeleton" style={{ height: 240 }} />}
