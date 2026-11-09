@@ -34,6 +34,7 @@ export default function Home() {
           {geo === "denied" && <span className="small muted">Location unavailable. Pick an outlet below.</span>}
         </div>
       </section>
+      <Link href="/party" className="card outlet"><h3>Planning a party?</h3><p className="small muted">Order for 10 or more guests. The catering manager confirms the price.</p></Link>
       {error && <div className="notice" role="alert">{error} <button className="link" onClick={() => load()}>Retry</button></div>}
       {!outlets && !error && <div className="outlets">{[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 88 }} />)}</div>}
       {outlets?.length === 0 && <div className="empty">No outlets are open for ordering right now.</div>}
