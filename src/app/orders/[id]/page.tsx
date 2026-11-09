@@ -12,6 +12,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [o, setO] = useState<OrderView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [cancelErr, setCancelErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try { setO(await api<OrderView>(`/api/orders/${id}`)); setError(null); }
@@ -19,6 +20,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   }, [id]);
   useEffect(() => { void load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(t); }, []);
+
+  async function cancel() {
+    if (!confirm("Cancel this order?")) return;
+    setCancelErr(null);
+    try { await api(`/api/orders/${id}/cancel`, { method: "POST", body: {} }); await load(); }
+    catch (e) { setCancelErr(e instanceof Error ? e.message : "Could not cancel"); }
+  }
 
   if (error && !o) return <main className="wrap"><div className="notice" role="alert">{error} <Link href="/login?next=/orders">Sign in</Link></div></main>;
   if (!o) return <main className="wrap"><div className="skeleton" style={{ height: 220 }} /></main>;
@@ -43,6 +51,14 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       <section className="card"><div className="lines">
         {o.items.map((i) => <div key={i.id} className="row between"><span>{i.qty} × {i.name}{i.portion ? ` (${i.portion})` : ""}{i.addOns.length ? ` + ${i.addOns.join(", ")}` : ""}</span></div>)}
       </div><div className="totals"><div className="row between grand"><span>Paid</span><span>{formatINR(o.totalPaise)}</span></div><p className="small muted">Includes 5% GST ({formatINR(o.gstPaise)}).</p></div></section>
+      {o.status === "PLACED" && <div><button className="btn ghost" onClick={cancel}>Cancel order</button>{cancelErr && <p className="error small" role="alert">{cancelErr}</p>}</div>}
+      {o.status !== "CANCELLED" && o.pointsEarned > 0 && <p className="small muted">You earned {o.pointsEarned} points on this order.</p>}
+      {o.messages && o.messages.length > 0 && (
+        <section className="stack" aria-label="Messages">
+          <h3>Messages sent to you <span className="tag">simulated WhatsApp</span></h3>
+          {o.messages.map((m) => <div key={m.id} className="card small" style={{ padding: 12 }}><span className="muted">{istTime(m.createdAt)}</span><br />{m.message}</div>)}
+        </section>
+      )}
       <Link className="btn ghost" href="/">Order again</Link>
     </main>
   );

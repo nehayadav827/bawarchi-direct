@@ -9,8 +9,8 @@ export interface MenuEntry {
   windowFrom: string | null; unavailable: "OUT_OF_STOCK" | "OUTSIDE_HOURS" | null;
 }
 
-export function ItemSheet({ item, onClose, onAdd }: { item: MenuEntry; onClose: () => void; onAdd: (c: { portion?: string; addOns: string[]; qty: number; unitPaise: number }) => void }) {
-  const [portion, setPortion] = useState(item.portions[0]?.label);
+export function ItemSheet({ item, initialPortion, onClose, onAdd }: { item: MenuEntry; initialPortion?: string | null; onClose: () => void; onAdd: (c: { portion?: string; addOns: string[]; qty: number; unitPaise: number }) => void }) {
+  const [portion, setPortion] = useState(item.portions.find((p) => p.label === initialPortion)?.label ?? item.portions[0]?.label);
   const [addOns, setAddOns] = useState<string[]>([]);
   const [qty, setQty] = useState(1);
   const base = item.portions.find((p) => p.label === portion)?.pricePaise ?? item.pricePaise;

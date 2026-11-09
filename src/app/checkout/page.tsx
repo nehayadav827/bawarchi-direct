@@ -8,7 +8,7 @@ import { useCart } from "@/ui/cart";
 import { useUser } from "@/ui/useUser";
 import { VegMark } from "@/ui/VegMark";
 
-interface Totals { subtotalPaise: number; discountPaise: number; totalPaise: number; gstIncludedPaise: number }
+interface Totals { subtotalPaise: number; discountPaise: number; loyaltyPaise: number; totalPaise: number; gstIncludedPaise: number; balance: number; maxRedeemPoints: number; redeemPoints: number; pointsEarned: number }
 
 export default function Checkout() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function Checkout() {
   const { cart, dispatch } = useCart();
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState<string | undefined>();
+  const [redeem, setRedeem] = useState(0);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [couponErr, setCouponErr] = useState<string | null>(null);
   const [method, setMethod] = useState<"UPI" | "CARD">("UPI");
@@ -30,17 +31,17 @@ export default function Checkout() {
   useEffect(() => { if (!loading && !user) router.replace("/login?next=/checkout"); }, [loading, user, router]);
   useEffect(() => {
     if (!user || !cart.outletId) return;
-    api<Totals>("/api/orders/quote", { body: { outletId: cart.outletId, lines, couponCode: applied } })
+    api<Totals>("/api/orders/quote", { body: { outletId: cart.outletId, lines, couponCode: applied, redeemPoints: redeem } })
       .then((t) => { setTotals(t); setErr(null); })
-      .catch((e) => { setErr(e.message); setTotals(null); });
+      .catch((e) => { if (redeem > 0) { setRedeem(0); return; } setErr(e.message); setTotals(null); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, cart.outletId, sig, applied]);
+  }, [user, cart.outletId, sig, applied, redeem]);
 
   async function applyCoupon() {
     setCouponErr(null);
     try {
-      const t = await api<Totals>("/api/orders/quote", { body: { outletId: cart.outletId, lines, couponCode: coupon } });
-      setApplied(coupon.trim().toUpperCase()); setTotals(t);
+      const t = await api<Totals>("/api/orders/quote", { body: { outletId: cart.outletId, lines, couponCode: coupon, redeemPoints: 0 } });
+      setApplied(coupon.trim().toUpperCase()); setRedeem(0); setTotals(t);
     } catch (e) { setCouponErr(e instanceof Error ? e.message : "Could not apply coupon"); }
   }
 
@@ -48,7 +49,7 @@ export default function Checkout() {
     setBusy(true); setErr(null);
     try {
       const payment = method === "UPI" ? { method, vpa: vpa.trim() } : { method, number: card.replace(/\s+/g, "") };
-      const r = await api<{ id: string }>("/api/orders", { body: { outletId: cart.outletId, lines, couponCode: applied, payment } });
+      const r = await api<{ id: string }>("/api/orders", { body: { outletId: cart.outletId, lines, couponCode: applied, redeemPoints: redeem, payment } });
       dispatch({ type: "clear" });
       router.push(`/orders/${r.id}`);
     } catch (e) { setErr(e instanceof Error ? e.message : "Could not place order"); setBusy(false); }
@@ -75,10 +76,17 @@ export default function Checkout() {
         <div className="totals">
           <div className="row between"><span>Subtotal</span><span>{totals ? formatINR(totals.subtotalPaise) : "…"}</span></div>
           {totals && totals.discountPaise > 0 && <div className="row between" style={{ color: "var(--ok)" }}><span>Coupon {applied}</span><span>−{formatINR(totals.discountPaise)}</span></div>}
+          {totals && totals.loyaltyPaise > 0 && <div className="row between" style={{ color: "var(--ok)" }}><span>{totals.redeemPoints} points</span><span>−{formatINR(totals.loyaltyPaise)}</span></div>}
           <div className="row between grand"><span>Total</span><span>{totals ? formatINR(totals.totalPaise) : "…"}</span></div>
           <p className="small muted">Prices include 5% GST{totals ? ` (${formatINR(totals.gstIncludedPaise)})` : ""}.</p>
         </div>
       </section>
+      {totals && totals.balance > 0 && (
+        <label className="card row between" style={{ padding: 14 }}>
+          <span><b>Use my points</b><br /><span className="small muted">You have {totals.balance} points. {totals.maxRedeemPoints > 0 ? `Up to ${totals.maxRedeemPoints} can be used here (saves ${formatINR(totals.maxRedeemPoints * 50)}).` : "Not enough order value to use points yet."}</span></span>
+          <input type="checkbox" aria-label="Use my points" checked={redeem > 0} disabled={totals.maxRedeemPoints === 0} onChange={(e) => setRedeem(e.target.checked ? totals.maxRedeemPoints : 0)} />
+        </label>
+      )}
       <div className="field"><label htmlFor="c">Coupon code</label>
         <div className="row"><input id="c" className="input" value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="e.g. DIRECT10" /><button className="btn ghost" onClick={applyCoupon} disabled={!coupon.trim()}>Apply</button></div>
         {couponErr && <span className="error small" role="alert">{couponErr}</span>}</div>
@@ -93,6 +101,7 @@ export default function Checkout() {
           : <div className="field"><label htmlFor="k">Card number</label><input id="k" className="input" inputMode="numeric" autoComplete="cc-number" placeholder="4111 1111 1111 1111" value={card} onChange={(e) => setCard(e.target.value)} /></div>}
         <p className="small muted">Test mode: nothing is charged. Use <code>4111 1111 1111 1111</code> or any valid UPI id like <code>demo@okbank</code>. <code>fail@test</code> simulates a decline.</p>
       </section>
+      {totals && totals.pointsEarned > 0 && <p className="small muted">You will earn {totals.pointsEarned} points on this order.</p>}
       {err && <p className="error" role="alert">{err}</p>}
       <button className="btn" onClick={place} disabled={busy || !totals || (method === "UPI" ? !vpa.trim() : !card.trim())}>{busy ? "Placing order…" : `Pay ${totals ? formatINR(totals.totalPaise) : ""}`}</button>
     </main>

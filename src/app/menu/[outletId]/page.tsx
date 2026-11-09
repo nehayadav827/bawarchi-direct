@@ -17,8 +17,13 @@ export default function MenuPage({ params }: { params: Promise<{ outletId: strin
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<MenuEntry | null>(null);
   const [vegOnly, setVegOnly] = useState(false);
+  const [again, setAgain] = useState<{ itemId: string; name: string; veg: boolean; portion: string | null; timesOrdered: number }[]>([]);
+  const [sheetPortion, setSheetPortion] = useState<string | null>(null);
 
   useEffect(() => { api<MenuData>(`/api/outlets/${outletId}/menu`).then(setData).catch((e) => setError(e.message)); }, [outletId]);
+
+  // Suggestions need a signed-in customer; for anyone else the request fails and the section simply does not appear.
+  useEffect(() => { api<{ suggestions: typeof again }>(`/api/suggestions?outletId=${outletId}`).then((r) => setAgain(r.suggestions)).catch(() => setAgain([])); }, [outletId]);
 
   const groups = useMemo(() => {
     const items = (data?.items ?? []).filter((i) => !vegOnly || i.veg);
@@ -42,6 +47,19 @@ export default function MenuPage({ params }: { params: Promise<{ outletId: strin
           <label className="row small"><input type="checkbox" checked={vegOnly} onChange={(e) => setVegOnly(e.target.checked)} /> Vegetarian only</label>
         </div>
         {cart.outletId && cart.outletId !== outletId && <div className="notice small">Your cart has items from {cart.outletName}. Adding here will start a new cart.</div>}
+        {again.length > 0 && (
+          <section className="stack" aria-label="Order again">
+            <h2>Order again</h2>
+            <div className="chips" style={{ position: "static", paddingBottom: 4 }}>
+              {again.map((a) => (
+                <button key={a.itemId} className="chip" onClick={() => { const it = data.items.find((i) => i.id === a.itemId); if (it) { setSheetPortion(a.portion); setSheet(it); } }}>
+                  <span className="row" style={{ gap: 8 }}><VegMark veg={a.veg} />{a.name} · {a.timesOrdered}×</span>
+                </button>
+              ))}
+            </div>
+            <p className="small muted">Suggestions only. Nothing is added until you choose it.</p>
+          </section>
+        )}
         <nav className="chips" aria-label="Menu sections">{groups.map((g) => <a key={g.c} className="chip" href={`#${g.c.replace(/\W+/g, "-")}`}>{g.c}</a>)}</nav>
         {groups.length === 0 && <div className="empty">Nothing matches this filter.</div>}
         {groups.map((g) => (
@@ -79,7 +97,7 @@ export default function MenuPage({ params }: { params: Promise<{ outletId: strin
           <Link className="btn" href="/checkout">Checkout</Link>
         </div></div>
       )}
-      {sheet && <ItemSheet item={sheet} onClose={() => setSheet(null)} onAdd={(c) => add(sheet, c)} />}
+      {sheet && <ItemSheet item={sheet} initialPortion={sheetPortion} onClose={() => { setSheet(null); setSheetPortion(null); }} onAdd={(c) => add(sheet, c)} />}
     </>
   );
 }

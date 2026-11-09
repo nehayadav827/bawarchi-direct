@@ -6,12 +6,16 @@ import { formatINR } from "@/domain/money";
 import type { OrderView } from "@/ui/useOrderStream";
 
 export default function MyOrders() {
+  const [points, setPoints] = useState<number | null>(null);
   const [orders, setOrders] = useState<OrderView[] | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
   useEffect(() => { api<{ orders: OrderView[] }>("/api/orders").then((r) => setOrders(r.orders)).catch((e) => setError({ status: e.status, message: e.message })); }, []);
+  useEffect(() => { api<{ balance: number }>("/api/loyalty").then((r) => setPoints(r.balance)).catch(() => setPoints(null)); }, []);
   return (
     <main className="wrap stack" style={{ maxWidth: 560 }}>
       <h1>My orders</h1>
+      {points !== null && <div className="card" style={{ padding: 16 }}><b className="big">{points}</b> <span className="muted">reward points · 1 point per ₹10 on direct orders, worth ₹0.50 each at checkout</span></div>}
+      <Link className="btn ghost" href="/party">Plan a party order</Link>
       {error && <div className="notice" role="alert">{error.message} {error.status === 401 && <Link href="/login?next=/orders">Sign in</Link>}</div>}
       {!orders && !error && <div className="skeleton" style={{ height: 120 }} />}
       {orders?.length === 0 && <div className="empty">No orders yet. <Link href="/">Browse the menu</Link></div>}
